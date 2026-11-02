@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0c0e15">
+  <meta name="description" content="Rag Sports - a physics ragdoll sports hub. Soccer, hoops, beach volley, boxing and javelin with wobbly active ragdolls. Jump straight into a match, climb from Rookie to Legend in every sport and dress up your athlete.">
+  <title>Rag Sports</title>
+  <link rel="stylesheet" href="css/style.css?v=1">
+  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+</head>
+<body>
+  <canvas id="stage" aria-label="Game"></canvas>
+
+  <!-- =============================== HUD =============================== -->
+  <div id="hud" class="hidden">
+    <div class="scoreboard" id="scoreboard">
+      <div class="sb-side l">
+        <span class="sb-chip" id="sbChipL"></span>
+        <div class="sb-who"><b id="sbNameL">YOU</b><span class="sb-hp hidden" id="sbHpWrapL"><i id="sbHpL"></i></span></div>
+      </div>
+      <div class="sb-score" id="sbScoreL">0</div>
+      <div class="sb-mid"><b id="sbClock">1:30</b><small id="sbSub">FIRST TO 5</small></div>
+      <div class="sb-score" id="sbScoreR">0</div>
+      <div class="sb-side r">
+        <div class="sb-who"><b id="sbNameR">RIVAL</b><span class="sb-hp hidden" id="sbHpWrapR"><i id="sbHpR"></i></span></div>
+        <span class="sb-chip" id="sbChipR"></span>
+      </div>
+    </div>
+    <div class="sport-tag" id="sportTag"></div>
+    <div class="hud-right">
+      <button class="round" id="btnPause" aria-label="Pause"><span class="ic" data-icon="pause"></span></button>
+    </div>
+    <ol class="board hidden" id="board"></ol>
+    <div class="banner hidden" id="banner"><span id="bannerText">GO!</span></div>
+    <div class="coach hidden" id="coach"><p id="coachText"></p></div>
+    <div class="keys" id="keys"></div>
+
+    <div class="abilities" id="abilities">
+      <button class="orb orb-alt" data-act="alt"><span class="orb-icon"></span><small class="orb-lbl"></small></button>
+      <button class="orb orb-main" data-act="action"><span class="orb-icon"></span><small class="orb-lbl"></small></button>
+      <button class="orb orb-jump" data-act="jump"><span class="orb-icon"><span class="ic" data-icon="up"></span></span></button>
+    </div>
+    <div class="joy" id="joy"><div class="joy-base"></div><div class="joy-knob" id="joyKnob"></div></div>
+  </div>
+
+  <!-- =============================== HOME (sports hub) =============================== -->
+  <section id="home" class="screen">
+    <div class="home-panel">
+      <h1 class="title"><span class="t1">RAG</span><span class="t2">SPORTS</span></h1>
+      <div class="home-menu">
+        <button class="btn primary big" id="btnPlay"><span class="ic" data-icon="play"></span><span class="bt"><b>PLAY</b><small id="playSub">SOCCER · ROOKIE</small></span></button>
+        <div class="sports-grid" id="sportsGrid" role="list"></div>
+        <div class="btn-row">
+          <button class="btn tile" data-open="locker"><span class="ic" data-icon="shirt"></span><b>LOCKER</b><i class="note hidden" id="lockerNote"></i></button>
+          <button class="btn tile" data-open="records"><span class="ic" data-icon="chart"></span><b>RECORDS</b></button>
+          <button class="btn tile" data-open="random"><span class="ic" data-icon="shuffle"></span><b>RANDOM</b></button>
+        </div>
+      </div>
+    </div>
+    <div class="corner tr">
+      <div class="pill" title="Trophies"><span class="ic trophy" data-icon="trophy"></span><b id="homeTrophies">0</b></div>
+      <div class="pill" title="Coins"><span class="ic coin" data-icon="coin"></span><b class="coin-val">0</b></div>
+      <button class="round" data-open="settings" aria-label="Settings"><span class="ic" data-icon="gear"></span></button>
+    </div>
+  </section>
+
+  <!-- ============================== LOCKER ============================== -->
+  <section id="locker" class="screen hidden">
+    <header class="bar">
+      <button class="round" data-back aria-label="Back"><span class="ic" data-icon="back"></span></button>
+      <h2>LOCKER</h2>
+      <div class="pill"><span class="ic coin" data-icon="coin"></span><b class="coin-val">0</b></div>
+    </header>
+    <div class="locker">
+      <div class="locker-preview card"><canvas id="lockerCanvas" width="320" height="360"></canvas><div class="lp-name" id="lockerName"></div></div>
+      <div class="locker-shop card" id="lockerShop"></div>
+    </div>
+  </section>
+
+  <div id="modal" class="modal hidden"><div class="sheet" id="sheet"></div></div>
+  <div id="toasts"></div>
+  <div id="rotate" class="hidden"><div><span class="ic" data-icon="rotate"></span><p>TURN YOUR DEVICE SIDEWAYS</p><button class="btn primary" id="btnRotateOk"><b>PLAY ANYWAY</b></button></div></div>
+
+  <script src="js/util.js?v=1"></script>
+  <script src="js/platform.js?v=1"></script>
+  <script src="js/audio.js?v=1"></script>
+  <script src="js/progress.js?v=1"></script>
+  <script src="js/ragdoll.js?v=1"></script>
+  <script src="js/physics.js?v=1"></script>
+  <script src="js/fx.js?v=1"></script>
+  <script src="js/arenas.js?v=1"></script>
+  <script src="js/sports/base.js?v=1"></script>
+  <script src="js/sports/soccer.js?v=1"></script>
+  <script src="js/sports/hoops.js?v=1"></script>
+  <script src="js/sports/volley.js?v=1"></script>
+  <script src="js/sports/boxing.js?v=1"></script>
+  <script src="js/sports/javelin.js?v=1"></script>
+  <script src="js/game.js?v=1"></script>
+  <script src="js/icons.js?v=1"></script>
+  <script src="js/ui.js?v=1"></script>
+  <script src="js/main.js?v=1"></script>
+</body>
+</html>
