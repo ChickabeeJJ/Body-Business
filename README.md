@@ -1,86 +1,98 @@
-# Rag Sports
+# Body Business
 
-A physics ragdoll **sports hub**. Every athlete is an **active ragdoll** (the same rig as [Element Rag](https://github.com/ChickabeeJJ/Elements)): a verlet skeleton held upright by muscle springs, so bodies wobble, stumble, get flattened by a slide tackle and pick themselves back up. Balls bounce off every bone, so headers, chest traps, blocked shots and lucky deflections all just happen.
+A 2D ragdoll physics delivery puzzle: place a few devices, press RUN, and watch floppy employees get the parcel delivered (or not).
 
-Five sports, one tap from the hub into a match, no logins and **no ads**. It's pure HTML5 and vanilla JS with no build step and no dependencies. All art is drawn procedurally and every sound is synthesized.
+**Status: Phase 1, physics proof.** This build is the test room from the design brief: floor, walls, one parcel, one standard ragdoll employee, a spring pad and a rope, with a debug view, reset and an automated stress test. There are no levels, BUILD/RUN states or progression yet (that's Phase 2).
 
-To play locally, serve the folder (for example `python3 -m http.server`) and open `index.html`.
+## Run it
 
-## Sports
+Serve the folder and open `index.html`. Phaser is vendored in `lib/`, so the game works offline after the first load.
 
-| Sport | Format | Action | Second action | Hold DOWN |
-| --- | --- | --- | --- | --- |
-| **Soccer** | 1v1, first to 5 or most goals in 90 s (a draw goes to golden goal) | KICK: hold for power; facing the goal it aims itself | SLIDE tackle | chip |
-| **Hoops** | 1v1 full court, most points in 90 s (a tie goes to "next basket wins") | SHOOT: hold and release in the green zone; jump + SHOOT near the rim to dunk; without the ball it swipes for a steal | SHOVE (with the ball: a crossover burst) | |
-| **Volley** | 1v1 beach volleyball, first to 7 | HIT: bumps it over; in the air near the net it spikes | DIVE to dig a ball out | set it up high by the net |
-| **Boxing** | Best of three 45 s rounds, knockout or points | PUNCH: tap to jab, hold for a haymaker | BLOCK (hold) | uppercut |
-| **Javelin** | Three throws against five rivals' marks | THROW: tap to start the run-up, then hold to raise the angle and release before the line | | |
+```bash
+python3 -m http.server 8000
+```
 
-Shots from behind the 3PT stripe are worth 3. In volley, a ball that lands inside the lines scores for the other side; a ball hit out scores against whoever touched it last. In javelin the sweet spot is around 40-46 degrees (the green band on the gauge), a longer run-up adds distance, wind changes every throw, and stepping over the line is a foul (with a tumble).
+Add `?selftest` to the URL to run the stress test on load. Add `?vel` to draw velocity vectors in the debug view.
 
-## The hub and progression
+## Test room controls
 
-- **PLAY** starts the selected sport straight away. Hovering a sport card switches the live AI-vs-AI match behind the menu to that sport; clicking a card plays it. **RANDOM** picks another sport.
-- Every sport has a four-tier ladder: **Rookie, Pro, All-Star, Legend**. Winning a tier unlocks the next one (and pays a bonus). The pips on each card show the ladder; click an unlocked pip to pick that tier. In javelin, gold counts as a win; silver and bronze pay part of the coins.
-- AI opponents get faster, react sooner, aim better, defend smarter and play more aggressively with each tier.
-- Matches pay **coins** (more for higher tiers and wins). Spend them in the **Locker** on kit colours and headwear, and pick a shirt number. Everything is cosmetic.
-- After a match: Enter / Space or the yellow button goes straight to the next tier or a rematch. There's also a one-tap button to the next sport, and one back to the hub.
-- **Records** lists wins, losses, ladder progress and your javelin best. Each first tier unlock is a trophy.
-- First time in each sport, a short controls hint shows over the match (no tutorial screens).
+| Key | Button | What it does |
+| --- | --- | --- |
+| mouse / touch | | Drag anything (employees, parcel, rope) |
+| `R` | RESET | Rebuild the room from level data |
+| `1` | DROP | Drop the employee from near the ceiling at a random angle |
+| `2` | LAUNCH | Fling the employee in a random direction |
+| `3` | ONTO SPRING | Put the employee above the spring pad |
+| `4` | TIE ROPE | Tie / untie the rope's end to the employee |
+| `E` | + EMPLOYEE | Add employees (up to 4), then clear the extras |
+| `Q` | TYPE | Cycle archetypes: Standard, Heavy, Bouncy, Tiny, Floppy |
+| `W` | WALK | Experimental walk (see risks below) |
+| `P` / `Space` | PAUSE | Pause the simulation |
+| `D` / `` ` `` | DEBUG | Body shapes, joints, contact points, limit hits, live stats |
+| `T` | STRESS TEST | Run the Phase 1 stability gate |
 
-## Controls
+## Technical decisions
 
-| Desktop | Action |
-| --- | --- |
-| `A` / `D` (or arrows) | Move |
-| `W` / `Space` / `Up` | Jump |
-| `J` / left click (or `F` / `Enter`) | Action (kick, shoot, hit, punch, throw) |
-| `K` / right click (or `L` / `Shift`) | Second action (slide, shove, dive, block) |
-| hold `S` / `Down` | Modifier (chip, set, uppercut) |
-| `P` (or `Esc`) | Pause |
+- **Phaser 3.90 + Matter**, as the brief recommends. The repository was empty after the previous prototype was removed, so there was nothing to migrate. 3.90.0 is the last Phaser 3 release; it's vendored (`lib/`, MIT) instead of loaded from a CDN so the game stays playable offline. No build step; plain scripts under a `BB` namespace.
+- **Fixed 60 Hz stepping, driven by the scene.** Matter's own runner is off; `TestRoom.update` calls `world.step(16.67)` from an accumulator. That keeps runs repeatable and lets the stress test run 30 steps per frame.
+- **The ragdoll** (`src/ragdoll.js`) is 10 bodies: head, torso, upper and lower arms, thighs and shins. They're joined by zero-length pin constraints (stiffness 0.95, damping 0.1). All parts of one employee share a negative collision group, so a body never collides with itself; different employees, the parcel and the rope still collide with it. Rig geometry, joint limits, masses and archetypes are all data in `src/config.js`.
+- **Joint limits.** Matter has no angle limits, so each step a capped spring-damper adds corrective relative spin when a joint is past its range. It works on velocity only and its torque is bounded, so a limb jammed against the floor can't shove the whole body along. Limits are measured around the middle of each range, so angles that wrap past ±π are pushed back to the nearest limit.
+- **Velocity caps.** Every body is capped at 24 px/step (well under half the 60–80 px wall thickness, so nothing tunnels) and 0.4 rad/step of spin. Bodies that go NaN or leave the room are put back and counted (zero so far).
+- **Rest and sleep.** A jointed Matter body never quite stops: constraint and contact corrections leak into velocity and it creeps a few px/s. Matter's built-in sleeping doesn't handle constraints. So:
+  - A calm employee first gets extra air damping.
+  - After 1 s it sleeps: its parts become static.
+  - It wakes when the pointer grabs it, when a device launches it, or just before something moving reaches it, so the impact still sees its real mass.
+  - It won't sleep with a strained joint.
+  - Matter's cached correction impulses are cleared on sleep and wake; otherwise frozen parts drift apart.
+- **Devices launch whole actors.** The spring pad sets the velocity of every part of an employee at once, so it never rips one limb off. Its direction and strength are always drawn (the orange arrow).
+- **Level data** (`src/levels.js`): rooms are plain data (static geometry, spawns, devices), so Phase 2 levels reuse the same loader.
 
-On touch screens a floating joystick on the left moves (pull it down for the modifier) and the action, second action and jump buttons sit on the right. Small screens zoom the camera in and follow the play.
+## Phase 1 gate: stress test results
 
-## CrazyGames
+The stress test runs 21 scripted scenarios: drops, 12 random launches, max-speed wall and ceiling slams, spring launches, rope tie/swing/untie, a pile of four employees plus the parcel, a 40-launch chaos run, sleeping-body interactions, every archetype, and the walk check. A scenario fails on:
 
-The CrazyGames HTML5 SDK v3 is always included and every call is guarded, so the game also runs offline or on any other host (progress then falls back to `localStorage`).
+- a NaN position;
+- a body escaping the room;
+- a joint pulled apart (more than 10 px for more than 12 steps);
+- bodies or joints left over after a reset;
+- actors that never come to rest.
 
-- `init` is awaited first, then `loadingStart` / `loadingStop` wrap the boot.
-- `gameplayStart` when a match starts or resumes, `gameplayStop` on pause, at the end of a match and in menus.
-- `happytime` on a win, a new tier or a javelin personal best.
-- Saves go through the **data** module, so progress follows a logged-in player. Accounts are never required.
-- The platform's **mute** setting overrides the in-game sound toggles.
-- **No ads of any kind**: the game never requests a midgame, rewarded ad or banner (`js/platform.js` has no ad code at all).
+Current results: **21/21 on 6 of the last 7 full runs**. Per scenario:
 
-Listing text and three covers are in `crazygames/` (see `crazygames/CRAZYGAMES_LISTING.md`).
+- **Joint gap:** worst 2.3 px. The Tiny archetype briefly reaches about 11 px on impacts, then recovers.
+- **Resting pose:** at most about 0.4 rad past a joint limit.
+- **Settling:** everything comes to rest within 2–7 s.
+- **Cost:** about 1.5–2 ms per physics step with 4 employees, a parcel and the rope (51 bodies).
+
+The one miss was a single chaos run that didn't settle in time. I couldn't reproduce it in 45 further chaos runs.
+
+## Known risks and limits
+
+- **Walking.** The experimental puppet walk keeps the torso upright and shuffles forward at about 26 px/s, but it's slow and sometimes tips over. If employees need to move on their own in Phase 2, this needs real tuning, or a different design (for example conveyors, slopes and devices doing the moving).
+- **Tiny employees** have thin limbs, so joints visibly stretch for a moment on hard impacts.
+- **A sleeping employee on a moving surface** (conveyors, moving platforms in Phase 2) needs those devices to wake what they touch. Not built yet.
+- Tested in headless Chromium at 1280×720. Not yet tried on real phones.
+
+## Next: Phase 2 (playable vertical slice), on approval
+
+- BUILD / RUN / RESULT states, a delivery zone (parcel plus at least one employee, held briefly), fail on out of bounds or timeout.
+- Conveyor belt device; placement, rotation and removal of devices inside legal build areas, with a budget counter.
+- Six data-driven levels that teach spring, conveyor and rope one at a time, then combine them.
+- One-click retry that keeps the layout; next-level flow; basic rewards.
 
 ## Project layout
 
 ```
-index.html
-css/style.css        UI: ink panels with cut corners, sport cards, scoreboard, touch orbs
-js/util.js           math, seeded RNG, glow sprite cache
-js/platform.js       CrazyGames SDK v3 wrapper: events, data, settings (no ads)
-js/audio.js          synthesized SFX, crowd bed and a light looping groove
-js/progress.js       save data: coins, per-sport ladders, records, locker
-js/ragdoll.js        Athlete: active ragdoll, sport poses, tumble/recover, kits and headwear
-js/physics.js        Ball: ground, walls, rims, nets and per-bone ragdoll collisions
-js/fx.js             particles, rings, confetti, dust, score text
-js/arenas.js         venues: stadium, indoor court, beach, boxing hall, athletics track, live crowd
-js/sports/base.js    match flow (intro, play, point, over), tiers, AI helpers
-js/sports/*.js       soccer, hoops, volley, boxing, javelin
-js/game.js           canvas, camera, fixed-step loop, input routing, rendering
-js/icons.js          UI, sport and action icons
-js/ui.js             sports hub, HUD, touch controls, pause / result sheets, locker, records, settings
-js/main.js           boot, loop, keyboard / mouse
-assets/fonts/        Rubik (SIL Open Font License)
-crazygames/          listing text and covers
+index.html          page, test tray, debug panel, report
+css/style.css       ink / teal / orange UI
+lib/                Phaser 3.90.0 (MIT, see PHASER_LICENSE.md)
+src/config.js       physics tuning, colours, archetypes, ragdoll rig, rest tracking
+src/levels.js       level data (the test room)
+src/art.js          textures drawn at boot (employee parts, parcel)
+src/ragdoll.js      Employee: bodies, joints, soft limits, launch, rest assist, sleep / wake, walk
+src/actors.js       Parcel, SpringPad, Rope
+src/testroom.js     Phase 1 scene: build from data, fixed step, caps, wake rules, monitoring, drawing
+src/stress.js       automated stability scenarios
+src/ui.js           test tray, debug panel, stress report, keyboard
+src/main.js         Phaser + Matter config
 ```
-
-### Adding a sport
-
-Create `js/sports/<id>.js` with a class extending `Sport` (see `base.js`): set `groundY` and an `arena` look, build athletes with `makeAthlete`, and implement `reset`, `tick`, `ai`, `press` / `release`, `draw`, `hud` and `result`. Register it as `SPORTS.<id> = { id, name, color, icon, blurb, controls, hint, create }`, add the script to `index.html` and the id to `ORDER` in `js/ui.js`.
-
-## Credits
-
-Font: [Rubik](https://fonts.google.com/specimen/Rubik) by Hubert and Fischer, under the SIL Open Font License 1.1.
